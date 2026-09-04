@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="nano-cursor">
+  <title>nano-cursor</title>
+  <!-- The mark is what the crate does: a block cursor painted over a cell,
+       with the glyph underneath re-inked so it stays readable. -->
+  <rect x="8" y="8" width="240" height="240" rx="44" fill="#1c1f26"/>
+  <!-- an ordinary cell, drawn normally -->
+  <text x="70" y="170" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="128" font-weight="600" fill="#c7cdd6" text-anchor="middle">n</text>
+  <!-- the cursor cell: theme green block, dark contrast ink on top -->
+  <rect x="122" y="62" width="74" height="130" rx="8" fill="#87af5f"/>
+  <text x="159" y="170" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="128" font-weight="600" fill="#11150f" text-anchor="middle">c</text>
+</svg>
