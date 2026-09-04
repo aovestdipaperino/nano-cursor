@@ -1,10 +1,5 @@
 //! Resolving a ratatui [`Color`] to RGB, and picking readable ink over it.
 
-// This module's items are consumed by later tasks (cursor painting) that
-// don't exist yet in this crate; until then they are only exercised by the
-// tests below.
-#![allow(dead_code)]
-
 use ratatui::style::Color;
 
 /// The xterm defaults for the 16 named ANSI colours.

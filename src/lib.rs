@@ -7,3 +7,6 @@
 #![warn(missing_docs)]
 
 mod color;
+mod cursor;
+
+pub use cursor::{Cursor, Ink, Report, Shape};
