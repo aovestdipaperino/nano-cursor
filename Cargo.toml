@@ -5,6 +5,7 @@ edition = "2024"
 rust-version = "1.93"
 authors = ["Enzo Lombardi <enzinol@gmail.com>"]
 license = "MIT"
+readme = "README.md"
 repository = "https://github.com/aovestdipaperino/nano-cursor"
 description = "Draw a terminal cursor as a ratatui buffer cell, so its colour does not depend on terminal OSC 12 support"
 keywords = ["ratatui", "tui", "cursor", "terminal"]
