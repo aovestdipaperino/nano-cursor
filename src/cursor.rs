@@ -33,6 +33,46 @@ pub enum Ink {
     Fixed(Color),
 }
 
+/// Whether the cursor blinks, and on whose clock.
+///
+/// `since` is the caller's, not the crate's. A library-owned epoch would be
+/// hidden state and untestable timing, and real terminals restart the blink
+/// on each keystroke — which a caller that already knows its last key press
+/// gets for free by passing it here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Blink {
+    /// Always visible.
+    #[default]
+    Off,
+    /// Alternates every `period`, measured from `since`.
+    On {
+        /// Half-cycle: how long the cursor stays on, then off.
+        period: Duration,
+        /// When the current blink cycle started.
+        since: Instant,
+    },
+}
+
+impl Blink {
+    /// Whether the cursor is visible at `now`, and how long until that flips.
+    fn phase(self, now: Instant) -> (bool, Option<Duration>) {
+        let Blink::On { period, since } = self else {
+            return (true, None);
+        };
+        if period.is_zero() {
+            return (true, None);
+        }
+        let elapsed = now.saturating_duration_since(since);
+        let cycles = elapsed.as_nanos() / period.as_nanos();
+        let visible = cycles.is_multiple_of(2);
+        let consumed = period * u32::try_from(cycles).unwrap_or(u32::MAX);
+        (
+            visible,
+            Some(period.saturating_sub(elapsed.saturating_sub(consumed))),
+        )
+    }
+}
+
 /// What the caller must do after rendering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use = "the real cursor must be positioned here or IME placement breaks"]
@@ -53,6 +93,7 @@ pub struct Cursor {
     color: Color,
     shape: Shape,
     ink: Ink,
+    blink: Blink,
 }
 
 impl Cursor {
@@ -63,6 +104,7 @@ impl Cursor {
             color,
             shape: Shape::default(),
             ink: Ink::default(),
+            blink: Blink::default(),
         }
     }
 
@@ -80,12 +122,19 @@ impl Cursor {
         self
     }
 
+    /// Sets whether the cursor blinks.
+    #[must_use]
+    pub fn blink(mut self, blink: Blink) -> Self {
+        self.blink = blink;
+        self
+    }
+
     /// Paints the cursor at `pos`, clamped into `area`.
     ///
     /// Must run *after* the text has been rendered into `buf`: the contrast
     /// pick reads the glyph already in the cell, and a wide glyph's trailing
     /// cell has to be there to be found.
-    pub fn render(self, area: Rect, buf: &mut Buffer, pos: Position, _now: Instant) -> Report {
+    pub fn render(self, area: Rect, buf: &mut Buffer, pos: Position, now: Instant) -> Report {
         let position = clamp(area, pos);
         // Clamping is for the *report* only. A caret outside the area paints
         // nothing: clamping first and then painting would drop a block on an
@@ -94,6 +143,13 @@ impl Cursor {
             return Report {
                 position,
                 redraw_after: None,
+            };
+        }
+        let (visible, redraw_after) = self.blink.phase(now);
+        if !visible {
+            return Report {
+                position,
+                redraw_after,
             };
         }
         let width = buf
@@ -108,7 +164,7 @@ impl Cursor {
         }
         Report {
             position,
-            redraw_after: None,
+            redraw_after,
         }
     }
 
@@ -239,6 +295,65 @@ mod tests {
         assert_eq!(cell.bg, Color::Reset, "background must survive");
         assert!(cell.modifier.contains(Modifier::UNDERLINED));
         assert_eq!(cell.underline_color, GREEN);
+    }
+
+    #[test]
+    fn blink_paints_in_the_on_phase_and_skips_the_off_phase() {
+        let since = Instant::now();
+        let period = Duration::from_millis(500);
+        let mut on = Buffer::with_lines(vec!["abcdef"]);
+        let _ = Cursor::new(GREEN)
+            .blink(Blink::On { period, since })
+            .render(
+                area(),
+                &mut on,
+                Position::new(0, 0),
+                since + Duration::from_millis(100),
+            );
+        assert_eq!(
+            on.cell(Position::new(0, 0)).unwrap().bg,
+            GREEN,
+            "first half is on"
+        );
+
+        let mut off = Buffer::with_lines(vec!["abcdef"]);
+        let _ = Cursor::new(GREEN)
+            .blink(Blink::On { period, since })
+            .render(
+                area(),
+                &mut off,
+                Position::new(0, 0),
+                since + Duration::from_millis(600),
+            );
+        assert_eq!(
+            off.cell(Position::new(0, 0)).unwrap().bg,
+            Color::Reset,
+            "second half is off"
+        );
+    }
+
+    #[test]
+    fn redraw_after_counts_down_to_the_next_phase_boundary() {
+        let since = Instant::now();
+        let period = Duration::from_millis(500);
+        let mut buf = Buffer::with_lines(vec!["abcdef"]);
+        let report = Cursor::new(GREEN)
+            .blink(Blink::On { period, since })
+            .render(
+                area(),
+                &mut buf,
+                Position::new(0, 0),
+                since + Duration::from_millis(400),
+            );
+        assert_eq!(report.redraw_after, Some(Duration::from_millis(100)));
+    }
+
+    #[test]
+    fn a_steady_cursor_asks_for_no_redraw() {
+        let mut buf = Buffer::with_lines(vec!["abcdef"]);
+        let report =
+            Cursor::new(GREEN).render(area(), &mut buf, Position::new(0, 0), Instant::now());
+        assert_eq!(report.redraw_after, None);
     }
 
     #[test]
