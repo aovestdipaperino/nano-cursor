@@ -123,7 +123,17 @@ impl Cursor {
                 };
                 cell.set_bg(self.color).set_fg(ink);
             }
-            Shape::Bar | Shape::Underline => {}
+            Shape::Bar => {
+                cell.set_symbol("\u{258f}").set_fg(self.color);
+            }
+            Shape::Underline => {
+                use ratatui::style::{Modifier, Style};
+                cell.set_style(
+                    Style::default()
+                        .add_modifier(Modifier::UNDERLINED)
+                        .underline_color(self.color),
+                );
+            }
         }
     }
 }
@@ -208,5 +218,41 @@ mod tests {
             Position::new(5, 0),
             "clamped into the area"
         );
+    }
+
+    #[test]
+    fn underline_preserves_the_cell_and_colours_the_line() {
+        use ratatui::style::Modifier;
+        let mut buf = Buffer::with_lines(vec!["abcdef"]);
+        buf.cell_mut(Position::new(2, 0))
+            .unwrap()
+            .set_fg(Color::Blue);
+        let _ = Cursor::new(GREEN).shape(Shape::Underline).render(
+            area(),
+            &mut buf,
+            Position::new(2, 0),
+            Instant::now(),
+        );
+        let cell = buf.cell(Position::new(2, 0)).unwrap();
+        assert_eq!(cell.symbol(), "c", "glyph must survive");
+        assert_eq!(cell.fg, Color::Blue, "foreground must survive");
+        assert_eq!(cell.bg, Color::Reset, "background must survive");
+        assert!(cell.modifier.contains(Modifier::UNDERLINED));
+        assert_eq!(cell.underline_color, GREEN);
+    }
+
+    #[test]
+    fn bar_replaces_the_glyph_which_is_documented_and_lossy() {
+        let mut buf = Buffer::with_lines(vec!["abcdef"]);
+        let _ = Cursor::new(GREEN).shape(Shape::Bar).render(
+            area(),
+            &mut buf,
+            Position::new(2, 0),
+            Instant::now(),
+        );
+        let cell = buf.cell(Position::new(2, 0)).unwrap();
+        assert_eq!(cell.symbol(), "\u{258f}");
+        assert_eq!(cell.fg, GREEN);
+        assert_eq!(cell.bg, Color::Reset, "the bar tints ink, not ground");
     }
 }
