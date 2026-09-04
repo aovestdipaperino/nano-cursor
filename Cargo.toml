@@ -1,0 +1,18 @@
+[package]
+name = "nano-cursor"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+authors = ["Enzo Lombardi <enzinol@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/aovestdipaperino/nano-cursor"
+description = "Draw a terminal cursor as a ratatui buffer cell, so its colour does not depend on terminal OSC 12 support"
+keywords = ["ratatui", "tui", "cursor", "terminal"]
+categories = ["command-line-interface"]
+
+[dependencies]
+ratatui = { version = "0.29", default-features = false }
+unicode-width = "0.2"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
