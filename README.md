@@ -2,6 +2,8 @@
 
 # nano-cursor
 
+[![GitHub stars](https://img.shields.io/github/stars/aovestdipaperino/nano-cursor?logo=github&color=brightgreen)](https://github.com/aovestdipaperino/nano-cursor/stargazers)
+
 Draw a terminal cursor as a styled cell in a [ratatui] buffer, so its colour
 does not depend on whether the terminal honours OSC 12.
 
